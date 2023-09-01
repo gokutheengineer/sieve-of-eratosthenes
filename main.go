@@ -2,6 +2,8 @@ package main
 
 import "fmt"
 
+var primesUntil = 1_000_000
+
 func main() {
 	primes := sieve()
 
@@ -17,7 +19,11 @@ func sieve() chan int {
 	go func() {
 		in_ch := generate()
 		for {
-			prime := <-in_ch
+			prime, ok := <-in_ch
+			if !ok {
+				close(out_ch)
+				break
+			}
 			in_ch = filter(in_ch, prime)
 			out_ch <- prime
 		}
@@ -29,11 +35,11 @@ func generate() chan int {
 	in_ch := make(chan int)
 
 	go func() {
-		for i := 2; ; i++ {
+		for i := 2; i < primesUntil; i++ {
 			in_ch <- i
 		}
+		close(in_ch)
 	}()
-
 	return in_ch
 }
 
@@ -42,7 +48,12 @@ func filter(in_ch chan int, prime int) chan int {
 
 	go func() {
 		for {
-			if i := <-in_ch; i%prime != 0 {
+			i, ok := <-in_ch
+			if !ok {
+				close(out_ch)
+				break
+			}
+			if i%prime != 0 {
 				out_ch <- i
 			}
 		}
